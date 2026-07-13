@@ -1,0 +1,25 @@
+services:
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:8090:8090"
+    command: >
+      zap.sh -daemon
+      -host 0.0.0.0
+      -port 8090
+      -config api.disablekey=true
+      -config api.addrs.addr.name=.*
+      -config api.addrs.addr.regex=true
+
+  backend:
+    build: ./backend
+    platform: linux/amd64
+    environment:
+      - ZAP_BASE=http://zap:8090
+    volumes:
+      - ./website:/app/website
+    ports:
+      - "127.0.0.1:5001:5000"
+    depends_on:
+      - zap

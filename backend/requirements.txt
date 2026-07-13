@@ -1,0 +1,3 @@
+flask
+requests
+python-owasp-zap-v2.4

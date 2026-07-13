@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Security Scanner</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e1e 0%, #2d1b2e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        /* ── Header ── */
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(220,53,69,0.3);
+            margin-bottom: 30px;
+        }
+        .header h1 { font-size: 2.8em; margin-bottom: 8px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .header p  { font-size: 1.1em; opacity: 0.9; }
+
+        .ethical-banner {
+            background: rgba(255,193,7,0.25);
+            border: 1px solid #ffc107;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 18px;
+            color: #fff3cd;
+            font-size: 0.95em;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: rgba(255,255,255,0.08);
+            border-radius: 15px;
+            padding: 28px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255,255,255,0.12);
+            backdrop-filter: blur(10px);
+        }
+        .card h2 { color: #ff6b7a; margin-bottom: 18px; font-size: 1.3em; }
+
+        /* ── Input ── */
+        .input-group { margin-bottom: 16px; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #ff6b7a; }
+        .input-group input[type="url"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #dc3545;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            font-size: 1em;
+        }
+        .input-group input::placeholder { color: rgba(255,255,255,0.5); }
+
+        .safe-targets {
+            background: rgba(33,150,243,0.1);
+            border-left: 4px solid #2196F3;
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            font-size: 0.92em;
+            line-height: 1.7;
+        }
+
+        /* ── Buttons ── */
+        .btn-row { display: flex; gap: 12px; }
+
+        .scan-btn {
+            flex: 1;
+            padding: 18px;
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.15em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(220,53,69,0.4);
+        }
+        .scan-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(220,53,69,0.6); }
+        .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .cancel-btn {
+            padding: 18px 28px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.05em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: none;
+        }
+        .cancel-btn:hover { background: rgba(255,255,255,0.2); }
+        .cancel-btn.visible { display: block; }
+
+        .export-btn {
+            padding: 12px 22px;
+            background: rgba(40,167,69,0.2);
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            color: #d4edda;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .export-btn:hover { background: rgba(40,167,69,0.35); }
+
+        /* ── Progress ── */
+        #progress-container { display: none; }
+        .phase-label { font-size: 0.9em; color: rgba(255,255,255,0.65); margin-bottom: 10px; }
+        .progress-bar {
+            width: 100%; height: 12px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 6px; overflow: hidden; margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc3545, #ff6b7a);
+            width: 0%;
+            transition: width 0.4s ease;
+            border-radius: 6px;
+        }
+        .progress-text { font-size: 0.95em; color: rgba(255,255,255,0.8); }
+
+        /* ── Risk Summary ── */
+        .risk-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .risk-card {
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 700;
+        }
+        .risk-card .count  { font-size: 2.4em; display: block; }
+        .risk-card .label  { font-size: 0.85em; opacity: 0.85; margin-top: 4px; }
+        .risk-card.high   { background: rgba(220,53,69,0.25);  border: 2px solid #dc3545; }
+        .risk-card.medium { background: rgba(255,193,7,0.2);   border: 2px solid #ffc107; color: #fff3cd; }
+        .risk-card.low    { background: rgba(23,162,184,0.2);  border: 2px solid #17a2b8; }
+
+        /* ── Results ── */
+        #results { display: none; }
+        #results.show { display: block; }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .vuln-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            border-left: 5px solid #dc3545;
+            overflow: hidden;
+        }
+        .vuln-item.risk-High   { border-left-color: #dc3545; }
+        .vuln-item.risk-Medium { border-left-color: #ffc107; }
+        .vuln-item.risk-Low    { border-left-color: #17a2b8; }
+
+        .vuln-header {
+            padding: 16px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .vuln-header:hover { background: rgba(255,255,255,0.05); }
+
+        .vuln-title { font-weight: 700; font-size: 1em; }
+        .vuln-badges { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+        .badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.78em;
+            font-weight: 700;
+        }
+        .badge-High     { background: rgba(220,53,69,0.35);  color: #ff8080; border: 1px solid #dc3545; }
+        .badge-Medium   { background: rgba(255,193,7,0.25);  color: #ffc107; border: 1px solid #ffc107; }
+        .badge-Low      { background: rgba(23,162,184,0.25); color: #17a2b8; border: 1px solid #17a2b8; }
+        .badge-conf     { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.2); }
+        .chevron { transition: transform 0.3s; color: rgba(255,255,255,0.5); }
+        .chevron.open { transform: rotate(180deg); }
+
+        .vuln-body {
+            display: none;
+            padding: 0 20px 20px;
+        }
+        .vuln-body.open { display: block; }
+
+        .vuln-field { margin-bottom: 14px; }
+        .vuln-field strong { color: #ff6b7a; display: block; margin-bottom: 4px; font-size: 0.88em; text-transform: uppercase; letter-spacing: 0.5px; }
+        .vuln-field p { color: rgba(255,255,255,0.8); font-size: 0.93em; line-height: 1.6; }
+        .vuln-field a { color: #2196F3; word-break: break-all; font-size: 0.88em; }
+
+        .solution-box {
+            background: rgba(40,167,69,0.12);
+            border: 1px solid rgba(40,167,69,0.4);
+            border-radius: 8px;
+            padding: 14px;
+        }
+        .solution-box strong { color: #28a745 !important; }
+        .solution-box p { color: #d4edda !important; }
+
+        .no-vulns {
+            text-align: center;
+            padding: 40px;
+            color: #28a745;
+            font-size: 1.2em;
+        }
+
+        .note {
+            background: rgba(255,193,7,0.08);
+            border: 1px solid rgba(255,193,7,0.4);
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            color: #fff3cd;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <h1>🛡️ Aryan's Web Security Scanner</h1>
+        <p>Powered by OWASP ZAP</p>
+        <div class="ethical-banner">
+            <strong>⚠️ ETHICAL USE ONLY:</strong> Only scan websites you own or have explicit written permission to test.
+            Unauthorised scanning is illegal and unethical.
+        </div>
+    </div>
+
+    <!-- Scanner Input -->
+    <div class="card">
+        <h2>🎯 Target Website</h2>
+
+        <div class="input-group">
+            <label for="website-url">Target URL</label>
+            <input type="url" id="website-url"
+                   placeholder="https://example.com  or  http://testphp.vulnweb.com" />
+        </div>
+
+        <div class="safe-targets">
+            <strong>✅ Safe targets for testing:</strong><br>
+            • https://owasp.org/www-project-webgoat/ &nbsp;|&nbsp; demo.testfire.net &nbsp;|&nbsp; https://public-firing-range.appspot.com
+        </div>
+
+        <div class="btn-row">
+            <button class="scan-btn" id="scan-btn" onclick="startScan()">🚀 Start Security Scan</button>
+            <button class="cancel-btn" id="cancel-btn" onclick="cancelScan()">✖ Cancel</button>
+        </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="card" id="progress-container">
+        <h2>🔄 Scanning in Progress</h2>
+        <div class="phase-label" id="phase-label">Initialising…</div>
+        <div class="progress-bar">
+            <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <div class="progress-text" id="progress-text">0% complete</div>
+    </div>
+
+    <!-- Results -->
+    <div id="results">
+        <div class="card">
+            <div class="results-header">
+                <h2>📋 Scan Results</h2>
+                <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+            </div>
+
+            <!-- Risk summary -->
+            <div class="risk-summary">
+                <div class="risk-card high">
+                    <span class="count" id="count-high">0</span>
+                    <div class="label">🔴 High Risk</div>
+                </div>
+                <div class="risk-card medium">
+                    <span class="count" id="count-medium">0</span>
+                    <div class="label">🟡 Medium Risk</div>
+                </div>
+                <div class="risk-card low">
+                    <span class="count" id="count-low">0</span>
+                    <div class="label">🔵 Low Risk</div>
+                </div>
+            </div>
+
+            <div id="results-content"></div>
+        </div>
+    </div>
+
+    <div class="note">
+        <strong>🔒 Privacy:</strong> No information you enter is stored or saved. All scans run locally inside Docker.
+    </div>
+
+</div>
+
+<script>
+    let pollInterval = null;
+    let lastAlerts   = [];
+
+    const phaseLabels = {
+        starting:     "🔍 Initialising ZAP…",
+        spidering:    "🕷️ Phase 1/3 — Spidering (crawling links)…",
+        passive_scan: "👁️ Phase 2/3 — Passive scan (analysing traffic)…",
+        active_scan:  "⚡ Phase 3/3 — Active scan (testing vulnerabilities)…",
+        complete:     "✅ Scan complete!",
+        cancelled:    "❌ Scan cancelled.",
+        blocked:      "🚫 Scan blocked.",
+        idle:         "Idle."
+    };
+
+    async function startScan() {
+        const url = document.getElementById("website-url").value.trim();
+        if (!url) { alert("Please enter a target URL."); return; }
+
+        document.getElementById("progress-container").style.display = "block";
+        document.getElementById("results").classList.remove("show");
+        document.getElementById("progress-fill").style.width = "0%";
+        document.getElementById("progress-text").innerText = "0% complete";
+        document.getElementById("phase-label").innerText = "Initialising…";
+        document.getElementById("scan-btn").disabled = true;
+        document.getElementById("cancel-btn").classList.add("visible");
+
+        const res = await fetch("/scan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url })
+        });
+
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            document.getElementById("progress-container").style.display = "none";
+            resetUI();
+            alert(data.message || "Could not start scan.");
+            return;
+        }
+
+        pollInterval = setInterval(pollStatus, 2000);
+    }
+
+    async function pollStatus() {
+        try {
+            const res  = await fetch("/status");
+            const data = await res.json();
+
+            const pct = Math.min(data.progress, 100);
+            document.getElementById("progress-fill").style.width = pct + "%";
+            document.getElementById("progress-text").innerText   = pct + "% complete";
+            document.getElementById("phase-label").innerText =
+                phaseLabels[data.phase] || "Scanning…";
+
+            lastAlerts = data.alerts || [];
+
+            if (pct >= 100 || data.phase === "complete") {
+                clearInterval(pollInterval);
+                finishScan(data.alerts || []);
+            }
+            if (data.phase === "cancelled") {
+                clearInterval(pollInterval);
+                resetUI();
+            }
+            if (data.phase === "blocked") {
+                clearInterval(pollInterval);
+                document.getElementById("progress-container").style.display = "none";
+                resetUI();
+                alert(data.error || "Scan target was blocked.");
+            }
+        } catch (e) {
+            console.error("Poll error:", e);
+        }
+    }
+
+    function finishScan(alerts) {
+        document.getElementById("progress-container").style.display = "none";
+        resetUI();
+        showResults(alerts);
+    }
+
+    function resetUI() {
+        document.getElementById("scan-btn").disabled = false;
+        document.getElementById("cancel-btn").classList.remove("visible");
+    }
+
+    async function cancelScan() {
+        clearInterval(pollInterval);
+        await fetch("/cancel", { method: "POST" });
+        document.getElementById("progress-container").style.display = "none";
+        resetUI();
+    }
+
+    function showResults(alerts) {
+        const high   = alerts.filter(a => a.risk === "High").length;
+        const medium = alerts.filter(a => a.risk === "Medium").length;
+        const low    = alerts.filter(a => a.risk === "Low").length;
+
+        document.getElementById("count-high").innerText   = high;
+        document.getElementById("count-medium").innerText = medium;
+        document.getElementById("count-low").innerText    = low;
+
+        let html = "";
+
+        if (alerts.length === 0) {
+            html = `<div class="no-vulns">✅ No significant vulnerabilities found!</div>`;
+        } else {
+            alerts.forEach((a, i) => {
+                const refLinks = (a.reference || "")
+                    .split(/\r?\n/)
+                    .filter(Boolean)
+                    .map(r => `<a href="${r}" target="_blank" rel="noopener">${r}</a>`)
+                    .join("<br>");
+
+                const cweWasc = [
+                    a.cweid  ? `CWE-${a.cweid}`  : "",
+                    a.wascid ? `WASC-${a.wascid}` : ""
+                ].filter(Boolean).join(" &nbsp;|&nbsp; ");
+
+                html += `
+                <div class="vuln-item risk-${a.risk}">
+                    <div class="vuln-header" onclick="toggleVuln(${i})">
+                        <span class="vuln-title">${escHtml(a.alert)}</span>
+                        <span class="vuln-badges">
+                            <span class="badge badge-${a.risk}">${a.risk}</span>
+                            <span class="badge badge-conf">${a.confidence}</span>
+                            <span class="chevron" id="chevron-${i}">▼</span>
+                        </span>
+                    </div>
+                    <div class="vuln-body" id="body-${i}">
+                        <div class="vuln-field">
+                            <strong>🔗 Affected URL</strong>
+                            <p><a href="${escHtml(a.url)}" target="_blank" rel="noopener">${escHtml(a.url)}</a></p>
+                        </div>
+                        ${cweWasc ? `<div class="vuln-field"><strong>🏷️ Identifiers</strong><p>${cweWasc}</p></div>` : ""}
+                        <div class="vuln-field">
+                            <strong>📄 Description</strong>
+                            <p>${escHtml(a.description)}</p>
+                        </div>
+                        <div class="vuln-field solution-box">
+                            <strong>✅ Recommended Fix</strong>
+                            <p>${escHtml(a.solution)}</p>
+                        </div>
+                        ${refLinks ? `<div class="vuln-field"><strong>📚 References</strong><p>${refLinks}</p></div>` : ""}
+                    </div>
+                </div>`;
+            });
+        }
+
+        document.getElementById("results-content").innerHTML = html;
+        document.getElementById("results").classList.add("show");
+    }
+
+    function toggleVuln(i) {
+        const body    = document.getElementById(`body-${i}`);
+        const chevron = document.getElementById(`chevron-${i}`);
+        body.classList.toggle("open");
+        chevron.classList.toggle("open");
+    }
+
+    function exportCSV() {
+        if (!lastAlerts.length) { alert("No results to export."); return; }
+
+        const headers = ["Alert", "Risk", "Confidence", "URL", "Description", "Solution"];
+        const rows = lastAlerts.map(a => [
+            a.alert, a.risk, a.confidence, a.url, a.description, a.solution
+        ].map(v => `"${(v || "").replace(/"/g, '""')}"`));
+
+        const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "scan_results.csv";
+        link.click();
+    }
+
+    function escHtml(str) {
+        return (str || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+</script>
+</body>
+</html>
