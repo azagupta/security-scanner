@@ -69,8 +69,6 @@ Enter a target URL and start the scan. Progress moves through three phases —
 spidering, passive scan, active scan — and results are grouped by risk with
 a description, recommended fix, and CWE/WASC references for each finding.
 
-![Scan form](images/scan-form.png)
-
 ![Scan results](images/scan-results.png)
 
 ## Security notes
